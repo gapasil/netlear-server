@@ -11,6 +11,8 @@ const User = new Schema({
     academicDegrees:{type:String},
     position:{type:String},
     picture:{type:String},
+    gender:{type:String},
+    derictoriesFile:{type:Array}
 })
 
 module.exports = model("user",User)

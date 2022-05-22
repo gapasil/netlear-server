@@ -20,7 +20,7 @@ module.exports = async function(emailCandidate,user,token){
         subject: 'Message from Node js',
         text: 'This message was sent from Node js server.',
         html:
-          htmlMessageAuthorization("http://localhost:5000",user,token),
+          htmlMessageAuthorization("http://netlear-server.site",user,token),
       })
       
     console.log(result)

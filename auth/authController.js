@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const {validationResult} = require("express-validator")
 const jwt = require("jsonwebtoken")
 const {secretKey} = require("../config")
+const fs = require("fs")
+
 
 const generateAcessTocken = (id,roles) =>{
     const payload = {
@@ -15,7 +17,7 @@ const generateAcessTocken = (id,roles) =>{
 }
 
 class authController {
-    async register(req, res) {
+    async registeremail(req, res) {
         try {
             const errors = validationResult(req)
             if(!errors.isEmpty()){
@@ -30,14 +32,35 @@ class authController {
             const userRole = await Role.findOne({value: "noverufyuser"})
             const user = new User({email,lastname,name, password: hashPassword, roles: [userRole.value]})
             await user.save()
-            return res.json({message: "Пользователь зарегистрирован"})
-
+            const token = generateAcessTocken(user._id, user.roles)
+            mailer(email,user,token)
+            return res.json({message: "Для подтверждения регистраций переидите в почту которую указали при регистраций"})
         } catch (e) {
             console.log(e);
             res.status(400).json({message:"Registration error"})    
         }
     }
-
+    async registerphone(req, res) {
+        try {
+            const errors = validationResult(req)
+            if(!errors.isEmpty()){
+                return res.status(400).json({message:"Ошибка при регистраций", errors})
+            }
+            const {name,lastname,phone, password, avatar} = req.body
+            const candidate = await User.findOne({phone})
+            if(candidate){
+                return res.status(400).json({message:"Пользователь с таким номером телефона уже существует"})
+            }
+            const hashPassword = bcrypt.hashSync(password, 7);
+            const userRole = await Role.findOne({value: "noverufyuser"})
+            const user = new User({email,lastname,name, password: hashPassword, roles: [userRole.value]})
+            await user.save()
+            return res.json({message: "Вы успешно зарегестрировались!"})
+        } catch (e) {
+            console.log(e);
+            res.status(400).json({message:"Registration error"})    
+        }
+    }
     async login(req, res){
         try {
             const {email, password} = req.body
@@ -50,10 +73,6 @@ class authController {
                 return res.status(400).json({message: "Введен неверный пароль"})
             }
             const token = generateAcessTocken(user._id, user.roles)
-            if(user.roles != "user"||user.roles != "admin"){
-                mailer(email,user,token)
-                return res.json({message: "Для подтверждения регистраций переидите в почту которую указали при регистраций"})
-            }
             return res.json({token})
 
         } catch (e) {
@@ -77,8 +96,7 @@ class authController {
                     new:true
                 }
             )
-            const newtoken = generateAcessTocken(user._id, user.roles)
-            return res.json({newtoken})
+            res.render('./verify.html');
         }catch (e) {
             console.log(e);
             res.status(400).json({message:"login error"})        
@@ -113,7 +131,29 @@ class authController {
             const user = await User.find()           
             res.json(user)    
         } catch (e) {
-            console.log(e);
+            res.json(e) 
+        }
+    }
+    async uploadImg(req, res){
+        try{
+            const {email,nameDir} = req.body
+            const user = await User.findOne({email})
+            let masfile = [nameDir]
+            for(let key of user.derictoriesFile){
+                masfile.push(user.derictoriesFile[key])
+            }
+            await User.findOneAndUpdate(
+                {"email":email},
+                {$set:{
+                    derictoriesFile:masfile
+                }},
+                {
+                    new:true
+                }
+            )
+            res.json({message:"Загрузка прошла успешно!"})
+        } catch (e) {
+            res.json(e) 
         }
     }
 }
